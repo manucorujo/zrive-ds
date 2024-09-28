@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import requests
+from typing import Any
 
 
 API_URL = "https://archive-api.open-meteo.com/v1/archive"
@@ -14,7 +15,7 @@ START_DATE = "2010-01-01"
 END_DATE = "2020-01-01"
 
 
-def get_data_from_api(url, params):
+def get_data_from_api(url: str, params: dict[str, Any]) -> Any:
     r = requests.get(url, params=params)
     if r.status_code == 200:
         return r.json()
@@ -22,7 +23,7 @@ def get_data_from_api(url, params):
         raise Exception(f"Error{r.status_code}: {r.text}")
 
 
-def process_data(data, city):
+def process_data(data: Any, city: str) -> pd.DataFrame:
     if "daily" in data:
         daily_data = data["daily"]
 
@@ -49,7 +50,7 @@ def process_data(data, city):
     return df
 
 
-def get_data_meteo_api(city):
+def get_data_meteo_api(city: str) -> dict[str, pd.DataFrame]:
     cities_values = {}
     variables_str = ",".join(VARIABLES)
     params = {
@@ -66,7 +67,7 @@ def get_data_meteo_api(city):
     return cities_values
 
 
-def plot_cities_weather(cities_dfs):
+def plot_cities_weather(cities_dfs: dict[str, pd.DataFrame]) -> None:
     # one figure with 3 subplots (one for each variable)
     _, axes = plt.subplots(3, 1, sharex=True)
 
@@ -85,7 +86,7 @@ def plot_cities_weather(cities_dfs):
     plt.show()
 
 
-def main():
+def main() -> None:
     dfs = {}
     for city, _ in COORDINATES.items():
         dfs.update(get_data_meteo_api(city))
