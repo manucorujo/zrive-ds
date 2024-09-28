@@ -18,7 +18,10 @@ END_DATE = "2020-01-01"
 def get_data_from_api(url: str, params: dict[str, Any]) -> Any:
     r = requests.get(url, params=params)
     if r.status_code == 200:
-        return r.json()
+        try:
+            return r.json()
+        except ValueError:
+            raise Exception("Error: Could not decode JSON response")
     else:
         raise Exception(f"Error{r.status_code}: {r.text}")
 
