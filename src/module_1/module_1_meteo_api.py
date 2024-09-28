@@ -14,50 +14,59 @@ START_DATE = "2010-01-01"
 END_DATE = "2020-01-01"
 
 
-def get_data():
+def get_data_from_api(url, params):
+    r = requests.get(url, params=params)
+    if r.status_code == 200:
+        return r.json()
+    else:
+        raise Exception(f"Error{r.status_code}: {r.text}")
+
+
+def process_data(data, city):
+    if "daily" in data:
+        daily_data = data["daily"]
+
+        # create a DataFrame from the daily data
+        df = pd.DataFrame(
+            {
+                "time": daily_data["time"],
+                "temperature_2m_mean": daily_data["temperature_2m_mean"],
+                "precipitation_sum": daily_data["precipitation_sum"],
+                "wind_speed_10m_max": daily_data["wind_speed_10m_max"],
+            }
+        )
+
+        # convert 'time' column to datetime format
+        df["time"] = pd.to_datetime(df["time"])
+
+        # resample time column from daily to monthly frequency
+        df.set_index("time", inplace=True)
+        df = df.resample("ME").mean()
+    else:
+        df = pd.DataFrame()
+        print(f"No daily data found for {city}.")
+
+    return df
+
+
+def get_data_meteo_api(city):
     cities_values = {}
     variables_str = ",".join(VARIABLES)
-    for city, coords in COORDINATES.items():
-        params = {
-            "start_date": START_DATE,
-            "end_date": END_DATE,
-            "latitude": coords["latitude"],
-            "longitude": coords["longitude"],
-            "daily": variables_str,
-        }
-        r = requests.get(API_URL, params=params)
-        if r.status_code == 200:
-            data = r.json()
-            if "daily" in data:
-                daily_data = data["daily"]
+    params = {
+        "start_date": START_DATE,
+        "end_date": END_DATE,
+        "latitude": COORDINATES[city]["latitude"],
+        "longitude": COORDINATES[city]["longitude"],
+        "daily": variables_str,
+    }
+    data = get_data_from_api(API_URL, params)
 
-                # create a DataFrame from the daily data
-                df = pd.DataFrame(
-                    {
-                        "time": daily_data["time"],
-                        "temperature_2m_mean": daily_data["temperature_2m_mean"],
-                        "precipitation_sum": daily_data["precipitation_sum"],
-                        "wind_speed_10m_max": daily_data["wind_speed_10m_max"],
-                    }
-                )
+    cities_values[city] = process_data(data, city)
 
-                # convert 'time' column to datetime format
-                df["time"] = pd.to_datetime(df["time"])
-
-                # resample time column from daily to monthly frequency
-                df.set_index("time", inplace=True)
-                df = df.resample("ME").mean()
-
-                cities_values[city] = df
-            else:
-                print(f"No daily data found for {city}.")
-        else:
-            raise Exception(f"Error{r.status_code}: {r.text}")
     return cities_values
 
 
 def plot_cities_weather(cities_dfs):
-
     # one figure with 3 subplots (one for each variable)
     _, axes = plt.subplots(3, 1, sharex=True)
 
@@ -77,7 +86,9 @@ def plot_cities_weather(cities_dfs):
 
 
 def main():
-    dfs = get_data()
+    dfs = {}
+    for city, _ in COORDINATES.items():
+        dfs.update(get_data_meteo_api(city))
     plot_cities_weather(dfs)
 
 
