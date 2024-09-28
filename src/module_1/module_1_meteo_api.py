@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import requests
-import seaborn as sns
 
 
 API_URL = "https://archive-api.open-meteo.com/v1/archive"
@@ -12,7 +11,7 @@ COORDINATES = {
 }
 VARIABLES = ["temperature_2m_mean", "precipitation_sum", "wind_speed_10m_max"]
 START_DATE = "2010-01-01"
-END_DATE = "2020-12-31"
+END_DATE = "2020-01-01"
 
 
 def get_data():
@@ -32,7 +31,7 @@ def get_data():
             if "daily" in data:
                 daily_data = data["daily"]
 
-                # Create a DataFrame from the daily data
+                # create a DataFrame from the daily data
                 df = pd.DataFrame(
                     {
                         "time": daily_data["time"],
@@ -42,8 +41,12 @@ def get_data():
                     }
                 )
 
-                # Convert 'time' column to datetime format
+                # convert 'time' column to datetime format
                 df["time"] = pd.to_datetime(df["time"])
+
+                # resample time column from daily to monthly frequency
+                df.set_index("time", inplace=True)
+                df = df.resample("ME").mean()
 
                 cities_values[city] = df
             else:
@@ -53,45 +56,29 @@ def get_data():
     return cities_values
 
 
-def plot_city_weather(df, city):
-    # lineplot for temperature
-    sns.lineplot(
-        x="time",
-        y="temperature_2m_mean",
-        data=df,
-        label="Temperature (°C)",
-        color="red",
-    )
+def plot_cities_weather(cities_dfs):
 
-    # lineplot for precipitation
-    sns.lineplot(
-        x="time",
-        y="precipitation_sum",
-        data=df,
-        label="Precipitation (mm)",
-        color="blue",
-    )
+    # one figure with 3 subplots (one for each variable)
+    _, axes = plt.subplots(3, 1, sharex=True)
 
-    # lineplot for wind speed
-    sns.lineplot(
-        x="time",
-        y="wind_speed_10m_max",
-        data=df,
-        label="Wind Speed (km/h)",
-        color="green",
-    )
+    variables = ["temperature_2m_mean", "precipitation_sum", "wind_speed_10m_max"]
+    titles = ["Temperature (°C)", "Precipitation (mm)", "Wind Speed (km/h)"]
 
-    plt.title(f"Weather Data for {city}")
-    plt.xlabel("Time")
-    plt.ylabel("Temperature (°C) / Wind Speed (km/h) / Precipitation (mm)")
+    for i, var in enumerate(variables):
+        for city_name, df in cities_dfs.items():
+            axes[i].plot(df.index, df[var], label=city_name)
+        axes[i].set_title(titles[i])
+        axes[i].legend()
+        axes[i].set_ylabel(titles[i])
+
+    axes[2].set_xlabel("Time")
 
     plt.show()
 
 
 def main():
     dfs = get_data()
-    for city, df in dfs.items():
-        plot_city_weather(df, city)
+    plot_cities_weather(dfs)
 
 
 if __name__ == "__main__":
