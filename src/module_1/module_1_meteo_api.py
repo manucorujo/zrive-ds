@@ -12,7 +12,7 @@ COORDINATES = {
 }
 VARIABLES = ["temperature_2m_mean", "precipitation_sum", "wind_speed_10m_max"]
 START_DATE = "2010-01-01"
-END_DATE = "2020-01-01"
+END_DATE = "2020-01-02"
 
 
 def get_data_from_api(url: str, params: dict[str, Any]) -> Any:
@@ -64,7 +64,6 @@ def get_data_meteo_api(city: str) -> dict[str, pd.DataFrame]:
         "daily": variables_str,
     }
     data = get_data_from_api(API_URL, params)
-
     cities_values[city] = process_data(data, city)
 
     return cities_values
@@ -90,10 +89,10 @@ def plot_cities_weather(cities_dfs: dict[str, pd.DataFrame]) -> None:
 
 
 def main() -> None:
-    dfs = {}
+    city_weather_dfs = {}
     for city, _ in COORDINATES.items():
-        dfs.update(get_data_meteo_api(city))
-    plot_cities_weather(dfs)
+        city_weather_dfs.update(get_data_meteo_api(city))
+    plot_cities_weather(city_weather_dfs)
 
 
 if __name__ == "__main__":
