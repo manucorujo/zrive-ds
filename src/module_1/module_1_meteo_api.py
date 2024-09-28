@@ -1,5 +1,5 @@
 import requests
-import json
+import pandas as pd
 
 API_URL = "https://archive-api.open-meteo.com/v1/archive"
 COORDINATES = {
@@ -25,7 +25,26 @@ def get_data():
         r = requests.get(API_URL, params=params)
         if r.status_code == 200:
             data = r.json()
-            print(data)
+            if "daily" in data:
+                daily_data = data["daily"]
+
+                # Create a DataFrame from the daily data
+                df = pd.DataFrame(
+                    {
+                        "time": daily_data["time"],
+                        "temperature_2m_mean": daily_data["temperature_2m_mean"],
+                        "precipitation_sum": daily_data["precipitation_sum"],
+                        "wind_speed_10m_max": daily_data["wind_speed_10m_max"],
+                    }
+                )
+
+                # Convert 'time' column to datetime format
+                df["time"] = pd.to_datetime(df["time"])
+
+                print(f"Data for {city}:")
+                print(df.head())
+            else:
+                print(f"No daily data found for {city}.")
         else:
             raise Exception(f"Error{r.status_code}: {r.text}")
 
