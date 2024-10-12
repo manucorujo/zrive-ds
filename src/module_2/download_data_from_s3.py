@@ -12,7 +12,7 @@ def load_variables():
     access_key = os.getenv("ACCESS_KEY_ID")
     secret_key = os.getenv("SECRET_ACCESS_KEY")
     bucket_name = os.getenv("BUCKET_NAME")
-    s3_directory = "groceries/sampled-datasets/"
+    s3_directory = "groceries/box_builder_dataset/"
     local_directory = "/home/manucorujo/zrive-ds-data/"
 
     return {
@@ -22,6 +22,25 @@ def load_variables():
         "s3_directory": s3_directory,
         "local_directory": local_directory,
     }
+
+
+def list_s3(
+    access_key: str,
+    secret_key: str,
+    bucket_name: str,
+):
+    s3 = boto3.client(
+        "s3", aws_access_key_id=access_key, aws_secret_access_key=secret_key
+    )
+
+    response = s3.list_objects_v2(Bucket=bucket_name)
+
+    if "Contents" in response:
+        logging.info("Files in the bucket:")
+        for obj in response["Contents"]:
+            logging.info(obj["Key"])
+    else:
+        logging.error("No files found in the bucket.")
 
 
 def download_s3_data(
@@ -69,6 +88,12 @@ def main():
         variables["s3_directory"],
         variables["local_directory"],
     )
+
+    # list_s3(
+    #    variables["access_key"],
+    #    variables["secret_key"],
+    #    variables["bucket_name"],
+    # )
 
 
 if __name__ == "__main__":
