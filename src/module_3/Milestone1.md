@@ -447,3 +447,26 @@ print(f"Test set to: {daily_orders.index.max()}")
     Test set from: 2021-02-22 00:00:00
     Test set to: 2021-03-03 00:00:00
 
+
+With the dates to split the data selected, is time to create the actual datasets
+
+
+```python
+train_set = filtered_df[filtered_df.order_date <= train_val_cut.date]
+val_set = filtered_df[(filtered_df.order_date > train_val_cut.date) & (filtered_df.order_date <= val_test_cut.date)]
+test_set = filtered_df[filtered_df.order_date > val_test_cut.date]
+```
+
+Divide dataset into features and target
+
+
+```python
+x_train = train_set[feature_cols]
+y_train = train_set[target_col]
+
+x_val = val_set[feature_cols]
+y_val = val_set[target_col]
+
+x_test = test_set[feature_cols]
+y_test = test_set[target_col]
+```
