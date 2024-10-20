@@ -359,3 +359,91 @@ filtered_df.info()
 
 
 ## 2nd task: Split data into training, validation and test
+
+
+```python
+filtered_df.shape
+```
+
+
+
+
+    (2163953, 27)
+
+
+
+
+```python
+filtered_df.groupby('order_id').outcome.sum().reset_index().shape
+```
+
+
+
+
+    (2603, 2)
+
+
+
+There are 2163953 products spread over 2603 orders. In my opinion, a good approach could be a temporary-based split (in order to prevent from infomation leakage), using a typical 70/20/10 distribution.
+
+
+```python
+# Get how many orders are performed each day
+daily_orders = filtered_df.groupby('order_date').order_id.nunique()
+daily_orders.head()
+```
+
+
+
+
+    order_date
+    2020-10-05 00:00:00     3
+    2020-10-06 00:00:00     7
+    2020-10-07 00:00:00     6
+    2020-10-08 00:00:00    12
+    2020-10-09 00:00:00     4
+    Name: order_id, dtype: int64
+
+
+
+
+```python
+total_orders = daily_orders.sum()
+percentage_orders = pd.DataFrame(columns=['date', 'percentage'])
+rows = []
+number_orders = 0
+for _, row in daily_orders.reset_index().iterrows():
+    date = row.iloc[0]
+    number_orders += row.iloc[1]
+    rows.append(
+        {'date': date, 'percentage': number_orders / total_orders}
+    )
+percentage_orders = pd.DataFrame(rows)
+
+print(percentage_orders.head())
+
+train_val_cut = percentage_orders[percentage_orders.percentage <= 0.7].iloc[-1]
+val_test_cut = percentage_orders[percentage_orders.percentage <= 0.9].iloc[-1]
+
+print(f"Train set from: {daily_orders.index.min()}")
+print(f"Train set to: {train_val_cut.date}")
+print(f"Validation set from: {train_val_cut.date}")
+print(f"Validation set to: {val_test_cut.date}")
+print(f"Test set from: {val_test_cut.date}")
+print(f"Test set to: {daily_orders.index.max()}")
+
+```
+
+                      date  percentage
+    0  2020-10-05 00:00:00    0.001153
+    1  2020-10-06 00:00:00    0.003842
+    2  2020-10-07 00:00:00    0.006147
+    3  2020-10-08 00:00:00    0.010757
+    4  2020-10-09 00:00:00    0.012294
+    Train set from: 2020-10-05 00:00:00
+    Train set to: 2021-02-04 00:00:00
+    Validation set from: 2021-02-04 00:00:00
+    Validation set to: 2021-02-22 00:00:00
+    Test set from: 2021-02-22 00:00:00
+    Test set to: 2021-03-03 00:00:00
+
