@@ -6,6 +6,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import precision_recall_curve, auc, roc_curve
 
 ```
 
@@ -474,21 +475,38 @@ x_test = test_set[feature_cols]
 y_test = test_set[target_col]
 ```
 
-## 3rd task: Train models
-
-I will start using a model with just numeric and binary variables, as they don't need preprocessing. Then, I can compare it with models that include all the variables. Due to the problem is a binary classification I will use Logistic Regression (lineal model)
+## 3rd task: Implement function to plot both precision-recall graph and ROC curve
 
 
 ```python
-train_variables = numerical_cols + binary_cols
+def plot_curves(y_true, y_pred, curve_type="both", dataset_type="train"):
+    
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig.suptitle(f"{dataset_type.capitalize()} Dataset - Performance Curves")
 
-# Use only numerical and binary columns to train the model (Ridge regression)
-x_train = x_train[train_variables]
-x_val = x_val[train_variables]
-x_test = x_test[train_variables]
-model = LogisticRegression()
-model.fit(x_train, y_train)
-# CURRENT STATUS: Logistic regression not converging. Still a lot of work to do.
+    if curve_type in ["precision-recall", "both"]:
+        # Compute the precision-recall curve and its AUC
+        precision, recall, _ = precision_recall_curve(y_true, y_pred)
+        pr_auc = auc(recall, precision)
+        
+        axes[0].step(recall, precision)
+        axes[0].set_xlabel('Recall')
+        axes[0].set_ylabel('Precision')
+        axes[0].set_title(f'Precision-Recall Curve (AUC={pr_auc:.2f})')
+
+    if curve_type in ["roc", "both"]:
+        # Compute the ROC curve and its AUC
+        fpr, tpr, _ = roc_curve(y_true, y_pred)
+        roc_auc = auc(fpr, tpr)
+
+        axes[1].plot(fpr, tpr)
+        axes[1].set_xlabel('False Positive Rate')
+        axes[1].set_ylabel('True Positive Rate')
+        axes[1].set_title(f'ROC Curve (AUC={roc_auc:.2f})')
+
+    plt.tight_layout()
+    plt.show()
+
 ```
 
 
@@ -701,7 +719,4 @@ model.fit(x_train, y_train)
     KeyboardInterrupt: 
 
 
-
-```python
-
-```
+I will start using a model with just numeric and binary variables, as they don't need preprocessing. Then, I can compare it with models that include all the variables. Due to the problem is a binary classification I will use Logistic Regression (lineal model)
