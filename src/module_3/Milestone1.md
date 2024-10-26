@@ -5,15 +5,14 @@
 import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import precision_recall_curve, auc, roc_curve
 from sklearn.preprocessing import StandardScaler
-from typing import Any
-
+from aux_functions import plot_curves
+from pathlib import Path
 ```
 
 
 ```python
-CSV_PATH = "/home/manucorujo/zrive-data/feature_frame.csv"
+CSV_PATH = Path.cwd().parents[2].joinpath("zrive-data", "feature_frame.csv")
 ```
 
 
@@ -241,12 +240,12 @@ df.info()
 
 
 ```python
-information_cols = ['variant_id', 'order_id', 'user_id', 'created_at', 'order_date']
-target_col = 'outcome'
+information_cols = ["variant_id", "order_id", "user_id", "created_at", "order_date"]
+target_col = "outcome"
 feature_cols = [col for col in df.columns if col not in information_cols + [target_col]]
 
-categorical_cols = ['product_type', 'vendor']
-binary_cols = ['ordered_before', 'abandoned_before', 'active_snoozed', 'set_as_regular']
+categorical_cols = ["product_type", "vendor"]
+binary_cols = ["ordered_before", "abandoned_before", "active_snoozed", "set_as_regular"]
 numerical_cols = [col for col in feature_cols if col not in categorical_cols + binary_cols]
 ```
 
@@ -323,7 +322,7 @@ filtered_orders = count_products[count_products.outcome >= 5]
 
 
 ```python
-filtered_df = df[df['order_id'].isin(filtered_orders['order_id'])]
+filtered_df = df[df["order_id"].isin(filtered_orders["order_id"])]
 filtered_df.info()
 ```
 
@@ -379,7 +378,7 @@ filtered_df.shape
 
 
 ```python
-filtered_df.groupby('order_id').outcome.sum().reset_index().shape
+filtered_df.groupby("order_id").outcome.sum().reset_index().shape
 ```
 
 
@@ -394,7 +393,7 @@ There are 2163953 products spread over 2603 orders. In my opinion, a good approa
 
 ```python
 # Get how many orders are performed each day
-daily_orders = filtered_df.groupby('order_date').order_id.nunique()
+daily_orders = filtered_df.groupby("order_date").order_id.nunique()
 daily_orders.head()
 ```
 
@@ -414,14 +413,14 @@ daily_orders.head()
 
 ```python
 total_orders = daily_orders.sum()
-percentage_orders = pd.DataFrame(columns=['date', 'percentage'])
+percentage_orders = pd.DataFrame(columns=["date", "percentage"])
 rows = []
 number_orders = 0
 for _, row in daily_orders.reset_index().iterrows():
     date = row.iloc[0]
     number_orders += row.iloc[1]
     rows.append(
-        {'date': date, 'percentage': number_orders / total_orders}
+        {"date": date, "percentage": number_orders / total_orders}
     )
 percentage_orders = pd.DataFrame(rows)
 
@@ -476,68 +475,43 @@ x_test = test_set[feature_cols]
 y_test = test_set[target_col]
 ```
 
-## 3rd task: Implement function to plot both precision-recall graph and ROC curve
+## 3rd task: Define a baseline
+
+In order to have something with which compare our model, we need a baseline. Sometimes it could be given by a business metric or a previous metric. Due to in this we do not have anything of that, we need to define one. I will simply use the "global_popularity" feature as it. This means that the product will be predicted to be bought the more popular it is.
 
 
 ```python
-def plot_curves(ax: Any, y_true: pd.Dataframe, y_pred: pd.Dataframe, label: str=None, curve_type: str="both"):
-    if curve_type in ["precision-recall", "both"]:
-        precision, recall, _ = precision_recall_curve(y_true, y_pred)
-        pr_auc = auc(recall, precision)
-        
-        ax[0].step(recall, precision, label=f'{label} (AUC={pr_auc:.2f})' if label else f'AUC={pr_auc:.2f}')
-        ax[0].set_xlabel('Recall')
-        ax[0].set_ylabel('Precision')
-        ax[0].set_title('Precision-Recall Curve')
-
-    if curve_type in ["roc", "both"]:
-        fpr, tpr, _ = roc_curve(y_true, y_pred)
-        roc_auc = auc(fpr, tpr)
-        
-        ax[1].plot(fpr, tpr, label=f'{label} (AUC={roc_auc:.2f})' if label else f'AUC={roc_auc:.2f}')
-        ax[1].set_xlabel('False Positive Rate')
-        ax[1].set_ylabel('True Positive Rate')
-        ax[1].set_title('ROC Curve')
-
-```
-
-## 4rd task: Define a baseline
-
-In order to have something with which compare our model, we need a baseline. Sometimes it could be given by a business metric or a previous metric. Due to in this we do not have anything of that, we need to define one. I will simply use the 'global_popularity' feature as it. This means that the product will be predicted to be bought the more popular it is.
-
-
-```python
-y_pred = val_set['global_popularity']
-y_true = val_set['outcome']
+y_pred = val_set["global_popularity"]
+y_true = val_set["outcome"]
 
 fig, ax = plt.subplots(1, 2, figsize=(14, 6))
 fig.suptitle(f"Train Dataset - Performance Curves (Baseline)")
 
 plot_curves(ax, y_true, y_pred, curve_type="both")
 
-ax[0].legend(loc='upper right')
-ax[1].legend(loc='lower right')
-ax[0].legend(loc='upper right')
-ax[1].legend(loc='lower right')
+ax[0].legend(loc="upper right")
+ax[1].legend(loc="lower right")
+ax[0].legend(loc="upper right")
+ax[1].legend(loc="lower right")
 
 plt.tight_layout()
 fig.show()
 
 ```
 
-    /tmp/ipykernel_1638/3314613440.py:15: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+    /tmp/ipykernel_1437/3314613440.py:15: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
       fig.show()
 
 
 
     
-![png](Milestone1_files/Milestone1_25_1.png)
+![png](Milestone1_files/Milestone1_23_1.png)
     
 
 
-## 5th task: Train and evaluate a first model
+## 4th task: Train and evaluate a first model
 
-I will start using a model with just numeric and binary variables, as they don't need preprocessing. Then, I can compare it with models that include all the variables. Due to the problem is a binary classification I will use Logistic Regression (lineal model)
+I will start using a model with just numeric and binary variables, as they don"t need preprocessing. Then, I can compare it with models that include all the variables. Due to the problem is a binary classification I will use Logistic Regression (lineal model)
 
 
 ```python
@@ -551,17 +525,16 @@ scaler = StandardScaler()
 
 x_train_scaled = scaler.fit_transform(x_train[train_cols])
 x_val_scaled = scaler.transform(x_val[train_cols])
-
 ```
 
-### 5.1 Ridge
+### 4.1 Ridge
 
 
 ```python
 fig_train, ax_train = plt.subplots(1, 2, figsize=(14, 6))
-fig_train.suptitle('Training Data - Performance Curves Across Different C Values')
+fig_train.suptitle("Training Data - Performance Curves Across Different C Values")
 fig_val, ax_val = plt.subplots(1, 2, figsize=(14, 6))
-fig_val.suptitle('Validation Data - Performance Curves Across Different C Values')
+fig_val.suptitle("Validation Data - Performance Curves Across Different C Values")
 
 # Define hyperparameter for the level of regularisation
 cs = [1e-8, 1e-6, 1e-4, 1e-2, 1, 100, 1e4, None]
@@ -570,42 +543,101 @@ for c in cs:
     if c == None:
         lr = LogisticRegression(penalty = None)
     else:
-        lr = LogisticRegression(penalty='l2', C=c)
+        lr = LogisticRegression(penalty="l2", C=c)
     
     lr.fit(x_train_scaled, y_train)
 
     train_proba = lr.predict_proba(x_train_scaled)[:, 1]
-    plot_curves(ax_train, y_train, train_proba, curve_type="both", label=f'C={c}')
+    plot_curves(ax_train, y_train, train_proba, curve_type="both", label=f"C={c}")
 
     val_proba = lr.predict_proba(x_val_scaled)[:, 1]
-    plot_curves(ax_val, y_val, val_proba, curve_type="both", label=f'C={c}')
+    plot_curves(ax_val, y_val, val_proba, curve_type="both", label=f"C={c}")
 
-ax_train[0].legend(loc='upper right')
-ax_train[1].legend(loc='lower right')
-ax_val[0].legend(loc='upper right')
-ax_val[1].legend(loc='lower right')
+ax_train[0].legend(loc="upper right")
+ax_train[1].legend(loc="lower right")
+ax_val[0].legend(loc="upper right")
+ax_val[1].legend(loc="lower right")
 
 plt.tight_layout()
 fig_train.show()
 fig_val.show()
 ```
 
-    /tmp/ipykernel_1638/3663856880.py:29: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+    /tmp/ipykernel_1437/3663856880.py:29: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
       fig_train.show()
-    /tmp/ipykernel_1638/3663856880.py:30: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+    /tmp/ipykernel_1437/3663856880.py:30: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
       fig_val.show()
 
 
 
     
-![png](Milestone1_files/Milestone1_31_1.png)
+![png](Milestone1_files/Milestone1_29_1.png)
     
 
 
 
     
-![png](Milestone1_files/Milestone1_31_2.png)
+![png](Milestone1_files/Milestone1_29_2.png)
     
 
 
-### 5.2 Lasso
+The graphs show that regularisation does not improve the model’s performance. Both the ROC and precision-recall curves, along with their AUC values, remain consistent across different regularisation strengths. This suggests the model's complexity is already suitable for the task, and further adjustments are unnecessary.
+
+Additionally, the dataset is highly imbalanced, with a majority of negative examples. This imbalance affects the False Positive Rate (FPR), which appears low despite a significant number of false positives. However, the precision-recall curves provide a clearer picture, showing improvements over the baseline.
+
+Lastly, similar error rates between the training and validation datasets suggest effective generalisation, indicating the model is not overfitting but learning from the data.
+
+### 4.2 Lasso
+(Same code as Ridge just changing the parameter of LogisticRegression, pending abstract into a separated function)
+
+
+```python
+fig_train, ax_train = plt.subplots(1, 2, figsize=(14, 6))
+fig_train.suptitle("Training Data - Performance Curves Across Different C Values")
+fig_val, ax_val = plt.subplots(1, 2, figsize=(14, 6))
+fig_val.suptitle("Validation Data - Performance Curves Across Different C Values")
+
+# Define hyperparameter for the level of regularisation
+cs = [1e-8, 1e-6, 1e-4, 1e-2, 1, 100, 1e4, None]
+
+for c in cs:
+    if c == None:
+        lr = LogisticRegression(penalty = None)
+    else:
+        lr = LogisticRegression(penalty="l1", C=c, solver="saga")
+    
+    lr.fit(x_train_scaled, y_train)
+
+    train_proba = lr.predict_proba(x_train_scaled)[:, 1]
+    plot_curves(ax_train, y_train, train_proba, curve_type="both", label=f"C={c}")
+
+    val_proba = lr.predict_proba(x_val_scaled)[:, 1]
+    plot_curves(ax_val, y_val, val_proba, curve_type="both", label=f"C={c}")
+
+ax_train[0].legend(loc="upper right")
+ax_train[1].legend(loc="lower right")
+ax_val[0].legend(loc="upper right")
+ax_val[1].legend(loc="lower right")
+
+plt.tight_layout()
+fig_train.show()
+fig_val.show()
+```
+
+    /tmp/ipykernel_1437/4173363900.py:29: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+      fig_train.show()
+    /tmp/ipykernel_1437/4173363900.py:30: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+      fig_val.show()
+
+
+
+    
+![png](Milestone1_files/Milestone1_32_1.png)
+    
+
+
+
+    
+![png](Milestone1_files/Milestone1_32_2.png)
+    
+
