@@ -8,6 +8,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from aux_functions import plot_curves
 from pathlib import Path
+import numpy as np
+import seaborn as sns
 ```
 
 
@@ -639,5 +641,120 @@ fig_val.show()
 
     
 ![png](Milestone1_files/Milestone1_32_2.png)
+    
+
+
+Notorious that for the two lowest regularisation parameters (1e-08 and 1e-06) the ROC curve is a straight line from (0,0) to (1,1). I interpret it as the classifier is simply classifying all the data as negative or all the date as positive, depending on the threshold, and matplot lib draws a straight line to join the two points, but it isn't real.
+
+## 4.3 Coefficient weights
+
+
+```python
+c_l2 = 1e-6 # Best C value viewed from the previous plots
+lr = LogisticRegression(penalty="l2", C=c_l2)
+lr.fit(x_train_scaled, y_train)
+
+lr_coefs_l2 = pd.DataFrame({"features": train_cols, 
+                            "importance": np.abs(lr.coef_[0]), 
+                            "regularisation" : ["l2"]*len(train_cols)})
+
+lr_coefs_l2 = lr_coefs_l2.sort_values("importance", ascending=True)
+
+c_l1 = 1e-4
+lr = LogisticRegression(penalty='l1', C=c_l1,  solver="saga")
+lr.fit(x_train_scaled, y_train)
+
+lr_coefs_l1 = pd.DataFrame({"features": train_cols, 
+                            "importance": np.abs(lr.coef_[0]), 
+                            "regularisation" : ["l1"]*len(train_cols)})
+
+lr_coefs_l1 = lr_coefs_l1.sort_values("importance", ascending=True)
+```
+
+
+```python
+lr_coefs = pd.concat([lr_coefs_l1, lr_coefs_l2])
+lr_coefs["features"] = pd.Categorical(lr_coefs["features"])
+
+lr_coefs = lr_coefs.sort_values("importance", ascending=True)
+order_cols = lr_coefs_l2.sort_values("importance", ascending=False)["features"]
+
+sns.barplot(lr_coefs, x="importance", y="features", hue="regularisation", order=order_cols)
+```
+
+
+
+
+    <Axes: xlabel='importance', ylabel='features'>
+
+
+
+
+    
+![png](Milestone1_files/Milestone1_36_1.png)
+    
+
+
+As expected\*, Lasso sows a really sparsed solution, using just three features to predict: *ordered_before*, *abandoned_before* and *global_popularity*. Ridge uses a more distributed throw features approach, but priorising the same three as Lasso.
+For this reason, could be interesting to use Lasso to select the most important features, and then train a model with just these features.
+
+
+
+\* Tipically Lasso forms a diamond-shaped constraint region in 2D. The corners of this diamond align with the axes (where parameters are zero), making these zero values more likely for optimal solutions. This results in a sparse model where some parameters are set to zero.
+
+## Model using just a subset of features
+
+
+```python
+reduced_cols = ["ordered_before", "abandoned_before", "global_popularity"]
+x_train_reduced_scaled = scaler.fit_transform(x_train[reduced_cols])
+x_val_reduced_scaled = scaler.fit_transform(x_val[reduced_cols])
+```
+
+
+```python
+fig_train, ax_train = plt.subplots(1, 2, figsize=(14, 6))
+fig_train.suptitle("Training Data - Performance Curves with Reduced Features")
+fig_val, ax_val = plt.subplots(1, 2, figsize=(14, 6))
+fig_val.suptitle("Validation Data - Performance Curves with Reduced Features")
+
+reg_coeff = {"l1": 1e-4, "l2": 1e-6}
+
+for reg, c in reg_coeff.items():
+    lr = LogisticRegression(penalty=reg, C=c, solver="saga")
+    
+    lr.fit(x_train_scaled, y_train)
+
+    train_proba = lr.predict_proba(x_train_scaled)[:, 1]
+    plot_curves(ax_train, y_train, train_proba, curve_type="both", label=f"C={c}, {reg}")
+
+    val_proba = lr.predict_proba(x_val_scaled)[:, 1]
+    plot_curves(ax_val, y_val, val_proba, curve_type="both", label=f"C={c}, {reg}")
+
+ax_train[0].legend(loc="upper right")
+ax_train[1].legend(loc="lower right")
+ax_val[0].legend(loc="upper right")
+ax_val[1].legend(loc="lower right")
+
+plt.tight_layout()
+fig_train.show()
+fig_val.show()
+```
+
+    /tmp/ipykernel_1437/1316094133.py:25: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+      fig_train.show()
+    /tmp/ipykernel_1437/1316094133.py:26: UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+      fig_val.show()
+
+
+
+    
+![png](Milestone1_files/Milestone1_40_1.png)
+    
+
+
+
+    
+![png](Milestone1_files/Milestone1_40_2.png)
     
 
